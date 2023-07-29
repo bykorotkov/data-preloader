@@ -1,65 +1,101 @@
 (function ($) {
-    $.fn.spgLoader = function (options) {
-        var settings = $.extend(
-            {
-                backgroundColor: "#fff",
-                opacity: 0.5,
-            },
-            options
-        );
+    // Объект для хранения текущего прелоадера
+    var currentLoader = null;
+    // Флаги для отслеживания закрытия и открытия прелоадера
+    var isClosing = false;
+    var isOpening = false;
 
-        var loader = $("<div>").addClass("spg-loader");
-        loader.css({
-            "background-color": settings.backgroundColor,
-            opacity: settings.opacity,
-        });
+    // Расширяем объект $.spgLoader
+    $.spgLoader = {
+        // Метод для показа прелоадера
+        show: function (options) {
+            var settings = $.extend(
+                {
+                    backgroundColor: "#000",
+                    opacity: 0.7,
+                    speedShow: 300,
+                },
+                options
+            );
 
-        var spinner = $("<div>").addClass("spg-spinner");
-        loader.append(spinner);
+            // Если уже производится закрытие, отменяем его и показываем прелоадер заново
+            if (isClosing) {
+                currentLoader.stop().fadeIn(settings.speedShow);
+                isClosing = false;
+                return;
+            }
 
-        this.append(loader);
+            // Если уже есть открытый прелоадер, игнорируем повторный вызов
+            if (isOpening) {
+                return;
+            }
 
-        return {
-            show: function () {
-                // Добавил здесь проверку на существование loader, также добавил параметр скорости (300)
-                if (!loader.length) {
-                    loader = $("<div>").addClass("spg-loader");
-                    loader.css({
-                        "background-color": settings.backgroundColor,
-                        opacity: settings.opacity,
-                    });
+            // Создаем новый прелоадер и показываем его
+            var loader = $("<div>").addClass("spg-loader");
+            loader.css({
+                "background-color": settings.backgroundColor,
+                opacity: settings.opacity,
+            });
 
-                    var spinner = $("<div>").addClass("spg-spinner");
-                    loader.append(spinner);
+            var spinner = $("<div>").addClass("spg-spinner");
+            loader.append(spinner);
 
-                    this.append(loader);
-                }
+            $("body").append(loader);
+            loader.fadeIn(settings.speedShow, function () {
+                isOpening = false;
+            });
 
-                loader.fadeIn(300);
-            },
-            // А тут добавил к fadeOut() колбэк чтобы убедиться, что анимация завершена перед тем, как скрыть элемент, и проверку на существование лоадера
-            hide: function () {
-                loader.fadeOut(function () {
-                    if ($(this).length) {
-                        $(this).remove();
-                    }
+            // Сохраняем ссылку на текущий прелоадер и устанавливаем флаг открытия
+            currentLoader = loader;
+            isOpening = true;
+        },
+
+        // Метод для скрытия прелоадера
+        hide: function (options) {
+            var settings = $.extend(
+                {
+                    speedHide: 300,
+                },
+                options
+            );
+
+            // Если уже производится открытие, отменяем его и закрываем прелоадер заново
+            if (isOpening) {
+                currentLoader.stop().fadeOut(settings.speedHide, function () {
+                    $(this).remove();
+                    currentLoader = null;
+                    isOpening = false;
                 });
-            },
-        };
+                return;
+            }
+
+            // Если уже закрывается, игнорируем повторный вызов
+            if (isClosing) {
+                return;
+            }
+
+            if (currentLoader) {
+                currentLoader.fadeOut(settings.speedHide, function () {
+                    $(this).remove();
+                    currentLoader = null;
+                    isClosing = false;
+                });
+            }
+            isClosing = true;
+        },
     };
 })(jQuery);
 
 $(function () {
-    var loader = $("body").spgLoader({
-        backgroundColor: "#000",
-        opacity: 0.7,
-    });
-
     $("#button").click(function () {
-        loader.show();
-        setTimeout(function () {
-            // loader.hide();
+        $.spgLoader.show({
+            // Бэкграунд и опасити свойства можно убрать, так как стандартные значения заданы в плагине, но решил тут тоже оставить для большей гибкости
+            backgroundColor: "#000",
+            opacity: 0.7,
+            speedShow: 300,
+        });
 
+        setTimeout(function () {
             $.ajax({
                 url: "https://jsonplaceholder.typicode.com/users",
                 method: "GET",
@@ -71,7 +107,9 @@ $(function () {
                     console.log("Произошла ошибка при загрузке данных:", error);
                 },
                 complete: function () {
-                    loader.hide();
+                    $.spgLoader.hide({
+                        speedHide: 300,
+                    });
                 },
             });
         }, 3000);
