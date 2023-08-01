@@ -1,9 +1,8 @@
 (function ($) {
     // Объект для хранения текущего прелоадера
     var currentLoader = null;
-    // Флаги для отслеживания закрытия и открытия прелоадера
-    var isClosing = false;
-    var isOpening = false;
+    // Флаг для отслеживания состояния прелоадера (открывается или закрывается)
+    var isLoading = false;
 
     // Расширяем объект $.spgLoader
     $.spgLoader = {
@@ -13,20 +12,20 @@
                 {
                     backgroundColor: "#000",
                     opacity: 0.7,
-                    speedShow: 300,
+                    speed: 300,
                 },
                 options
             );
 
-            // Если уже производится закрытие, отменяем его и показываем прелоадер заново
-            if (isClosing) {
-                currentLoader.stop().fadeIn(settings.speedShow);
-                isClosing = false;
+            // Если уже происходит закрытие, отменяем его и показываем прелоадер заново
+            if (isLoading) {
+                currentLoader.stop().fadeIn(settings.speed);
+                isLoading = true;
                 return;
             }
 
-            // Если уже есть открытый прелоадер, игнорируем повторный вызов
-            if (isOpening) {
+            // Если уже есть открытый прелоадер или анимация открытия запущена, игнорируем повторный вызов
+            if (currentLoader || (currentLoader && currentLoader.data("isAnimated"))) {
                 return;
             }
 
@@ -41,47 +40,46 @@
             loader.append(spinner);
 
             $("body").append(loader);
-            loader.fadeIn(settings.speedShow, function () {
-                isOpening = false;
+            loader.fadeIn(settings.speed, function () {
+                currentLoader.data("isAnimated", false);
             });
 
             // Сохраняем ссылку на текущий прелоадер и устанавливаем флаг открытия
             currentLoader = loader;
-            isOpening = true;
+            isLoading = true;
         },
 
         // Метод для скрытия прелоадера
         hide: function (options) {
             var settings = $.extend(
                 {
-                    speedHide: 300,
+                    speed: 300,
                 },
                 options
             );
 
-            // Если уже производится открытие, отменяем его и закрываем прелоадер заново
-            if (isOpening) {
-                currentLoader.stop().fadeOut(settings.speedHide, function () {
+            // Если уже происходит открытие, отменяем его и закрываем прелоадер заново
+            if (isLoading) {
+                currentLoader.stop().fadeOut(settings.speed, function () {
                     $(this).remove();
                     currentLoader = null;
-                    isOpening = false;
+                    isLoading = false;
                 });
                 return;
             }
 
             // Если уже закрывается, игнорируем повторный вызов
-            if (isClosing) {
+            if (!currentLoader || (currentLoader && currentLoader.data("isAnimated"))) {
                 return;
             }
 
             if (currentLoader) {
-                currentLoader.fadeOut(settings.speedHide, function () {
+                currentLoader.fadeOut(settings.speed, function () {
                     $(this).remove();
                     currentLoader = null;
-                    isClosing = false;
+                    isLoading = false;
                 });
             }
-            isClosing = true;
         },
     };
 })(jQuery);
@@ -92,7 +90,7 @@ $(function () {
             // Бэкграунд и опасити свойства можно убрать, так как стандартные значения заданы в плагине, но решил тут тоже оставить для большей гибкости
             backgroundColor: "#000",
             opacity: 0.7,
-            speedShow: 300,
+            speed: 300,
         });
 
         setTimeout(function () {
@@ -108,7 +106,7 @@ $(function () {
                 },
                 complete: function () {
                     $.spgLoader.hide({
-                        speedHide: 300,
+                        speed: 300,
                     });
                 },
             });
